@@ -1,0 +1,11 @@
+﻿{
+    "payload":  "{\"message\":\"Hello from distributed trip scheduler\"}",
+    "misfirePolicy":  "FIRE_NOW",
+    "type":  "ONE_OFF",
+    "zoneId":  "Asia/Kolkata",
+    "fireAt":  "2026-10-30T18:39:41Z",
+    "name":  "First Scheduler Test",
+    "maxRuntimeSeconds":  60,
+    "priority":  10,
+    "cronExpression":  null
+}
