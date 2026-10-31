@@ -1,4 +1,9 @@
-export type JobStatus = "ACTIVE" | "PAUSED" | "FAILED";
+export type JobStatus =
+  | "ACTIVE"
+  | "PAUSED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "FAILED";
 export type JobType = "ONE_OFF" | "CRON";
 
 export interface Job {
@@ -19,10 +24,10 @@ export interface CreateJobRequest {
   fireAt: string | null;
   priority: number;
   maxRuntimeSeconds: number;
-  misfirePolicy: "FIRE_NOW" | "SKIP" | "COALESCE";
+ misfirePolicy: MisfirePolicy;
 }
 
-
+export type UpdateJobRequest = CreateJobRequest;
 export interface Execution {
   id: string;
   jobId: string;
@@ -49,3 +54,4 @@ export interface ManagedUser {
   enabled: boolean;
   createdAt: string;
 }
+export type MisfirePolicy = "FIRE_NOW" | "SKIP" | "COALESCE";

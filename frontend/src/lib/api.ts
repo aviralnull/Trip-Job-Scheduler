@@ -1,10 +1,10 @@
-
 import type {
   CreateJobRequest,
+  UpdateJobRequest,
   Job,
   Execution,
   CurrentUser,
-  ManagedUser,
+  ManagedUser
 } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -59,5 +59,33 @@ updateUser: (
   request<ManagedUser>(`/api/admin/users`, {
     method: "PATCH",
     body: JSON.stringify({ id, role, enabled }),
+  }),
+
+  getJob: (id: string) =>
+  request<Job>(`/api/jobs/${id}`),
+
+updateJob: (id: string, body: UpdateJobRequest) =>
+  request<Job>(`/api/jobs/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body)
+  }),
+
+pauseJob: (id: string) =>
+  request<{ status: string }>(`/api/jobs/${id}/pause`, {
+    method: "POST"
+  }),
+
+resumeJob: (id: string) =>
+  request<{ status: string }>(`/api/jobs/${id}/resume`, {
+    method: "POST"
+  }),
+
+getJobExecutions: (id: string) =>
+  request<Execution[]>(`/api/executions/job/${id}`),
+
+
+deleteJob: (id: string) =>
+  request<void>(`/api/jobs/${id}`, {
+    method: "DELETE",
   }),
 };

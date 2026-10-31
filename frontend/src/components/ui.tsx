@@ -2,25 +2,55 @@ import type { ReactNode } from "react";
 import { Activity, AlertCircle, CheckCircle2, Clock3, PauseCircle } from "lucide-react";
 import type { JobStatus } from "@/lib/types";
 
-export function StatusBadge({ status }: { status: JobStatus }) {
-  const styles = {
-    ACTIVE: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-    PAUSED: "bg-amber-50 text-amber-700 ring-amber-200",
-    FAILED: "bg-rose-50 text-rose-700 ring-rose-200",
+export function StatusBadge({ status }: { status: string }) {
+  const config: Record<
+    string,
+    { label: string; className: string; icon: React.ReactNode }
+  > = {
+    ACTIVE: {
+      label: "ACTIVE",
+      className: "bg-green-50 text-green-700 ring-green-200",
+      icon: "●",
+    },
+    PAUSED: {
+      label: "PAUSED",
+      className: "bg-amber-50 text-amber-700 ring-amber-200",
+      icon: "Ⅱ",
+    },
+    COMPLETED: {
+      label: "COMPLETED",
+      className: "bg-blue-50 text-blue-700 ring-blue-200",
+      icon: "✓",
+    },
+    CANCELLED: {
+      label: "CANCELLED",
+      className: "bg-slate-100 text-slate-600 ring-slate-200",
+      icon: "×",
+    },
+    FAILED: {
+      label: "FAILED",
+      className: "bg-red-50 text-red-700 ring-red-200",
+      icon: "!",
+    },
+    RUNNING: {
+      label: "RUNNING",
+      className: "bg-blue-50 text-blue-700 ring-blue-200",
+      icon: "●",
+    },
   };
 
-  const icons = {
-    ACTIVE: CheckCircle2,
-    PAUSED: PauseCircle,
-    FAILED: AlertCircle,
+  const current = config[status] ?? {
+    label: status,
+    className: "bg-slate-100 text-slate-600 ring-slate-200",
+    icon: "•",
   };
-
-  const Icon = icons[status];
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${styles[status]}`}>
-      <Icon size={13} />
-      {status}
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${current.className}`}
+    >
+      <span>{current.icon}</span>
+      {current.label}
     </span>
   );
 }
