@@ -1,57 +1,283 @@
-# Distributed Trip Job Scheduler
+# 🚀 Distributed Trip Job Scheduler
 
-Java 21 / Spring Boot implementation starter for the MoveInSync Case Study 3.
+### A Distributed, Multi-Tenant Job Scheduling System
 
-## Architecture and guarantees
+**Java 21 | Spring Boot | PostgreSQL | Redis | Apache Kafka | Next.js**
 
-* PostgreSQL is the durable source of truth for jobs, run records and the transactional outbox.
-* Redis provides partition lease coordination, monotonic fencing counters and a place for hot scheduling indexes/cache.
-* Kafka transports job execution events. Consumers must be idempotent because delivery is at least once.
-* `job_runs.idempotency_key` uniquely identifies a scheduled occurrence (`jobId:scheduledEpochMillis`).
-* The outbox closes the database-write/Kafka-publish dual-write gap. The publisher can publish a duplicate if it crashes after Kafka acknowledgement but before marking the row; consumers must deduplicate.
-* A fencing token is useful only if the side-effect destination validates it. Redis lease ownership alone cannot stop a paused process from writing to an unrelated external system.
+A distributed job scheduling system designed to explore reliable job execution, horizontal scalability, fault tolerance, tenant isolation, and distributed coordination.
 
-## Important implementation status
+Built as an implementation of **MoveInSync – Case Study 3**.
 
-This repository is a runnable foundation, not a completed proof of every advanced-track requirement. Before claiming production-grade guarantees, complete the TODOs in `ExecutionConsumer` and `LeaseService`, and implement:
-1. A proper JWT authentication filter and tenant identity claim. The included HTTP Basic security is a development placeholder.
-2. Atomic compare-and-set lease renewal/acquisition with owner identity, monotonically increasing fencing tokens and partition ownership checks. Current lease helper illustrates the primitives but needs a production ownership protocol.
-3. Fencing validation at the side-effect boundary and durable idempotency in the downstream notification/billing adapter.
-4. Per-tenant concurrency semaphores/queues, fair dispatch, retry scheduler with exponential backoff + jitter, dead-letter replay, manual trigger, next-fire preview and misfire handling.
-5. Cron overlap/gap policy tests and complete misfire semantics.
-6. Multi-node partition rebalancing and a proper distributed clock strategy. Use database UTC time as the due-time authority; monitor node clock drift with NTP.
-7. Metrics for fire lag histogram, running/retrying/dead counts, queue depth, lease loss, stale fencing rejection and tenant throttling.
-8. Load/failure tests for 100,000 jobs / 10 minutes, `kill -9`, `SIGSTOP`, duplicate/out-of-order Kafka delivery and three-node failover.
+---
 
-Do not represent the case-study target (p99 lag <2s) as achieved until measured on a documented machine and workload.
+## 🎬 Project Demo
 
-## Run locally
+<p align="center">
+  <a href="https://youtu.be/yWJ7IUyE9Os">
+    <img src="./docs/Distributed%20Trip%20Scheduler%20Demo.png" alt="Distributed Trip Job Scheduler - Watch Project Demo" width="850"/>
+  </a>
+</p>
 
-Prerequisites: Docker Compose, Java 21, Maven 3.9+.
+<p align="center">
+  <b>▶ Click the thumbnail above to watch the complete project demonstration.</b>
+</p>
+
+---
+
+## 🏗️ Architecture & System Design
+
+The system separates durable job storage, distributed coordination, event delivery, and execution responsibilities to support reliable scheduling across multiple application instances.
+
+### High-Level Architecture
+
+<p align="center">
+  <img src="./docs/high_level.jpeg" alt="Distributed Trip Job Scheduler High Level Architecture" width="900"/>
+</p>
+
+### Low-Level Design
+
+<p align="center">
+  <img src="./docs/low_level_job_scheduler.jpeg" alt="Distributed Trip Job Scheduler Low Level Design" width="900"/>
+</p>
+
+For detailed architectural decisions, design considerations, and implementation notes, refer to **[DESIGN.md](./docs/DESIGN.md)**.
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
+|---|---|
+| Distributed Scheduling | Multiple application nodes coordinate job execution through partition ownership. |
+| Multi-Tenant Architecture | Tenant-level isolation for users, jobs, and executions. |
+| Idempotent Execution | Deterministic idempotency keys prevent duplicate run records. |
+| Distributed Coordination | Redis-based partition lease coordination and fencing token primitives. |
+| Transactional Outbox | Addresses the database-write and Kafka-publish dual-write problem. |
+| Event-Driven Architecture | Kafka transports job execution events. |
+| Fault Tolerance | Designed to handle node failures and duplicate message delivery. |
+| Cron Scheduling | Recurring jobs with timezone and DST policies. |
+| Execution Tracking | Maintains job runs and execution states. |
+| Observability | Prometheus metrics for monitoring system health and execution behaviour. |
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Programming Language | Java 21 |
+| Backend Framework | Spring Boot |
+| Frontend | Next.js |
+| Database | PostgreSQL |
+| Distributed Coordination | Redis |
+| Event Streaming | Apache Kafka |
+| Database Migration | Flyway |
+| Monitoring | Prometheus |
+| Build Tool | Maven |
+| Containerization | Docker & Docker Compose |
+
+---
+
+## ⚙️ Distributed System Design
+
+### 1. Durable Job Storage – PostgreSQL
+
+PostgreSQL acts as the source of truth for:
+
+- Scheduled jobs
+- Job execution records
+- Transactional outbox events
+
+Database constraints and indexes support durable state management and execution deduplication.
+
+### 2. Distributed Coordination – Redis
+
+Redis is used for:
+
+- Partition lease coordination
+- Fencing token generation
+- Scheduling indexes and hot-data caching
+
+Lease ownership and fencing validation require a complete production-grade ownership protocol.
+
+### 3. Event Streaming – Apache Kafka
+
+Kafka transports job execution events between scheduling and execution components.
+
+The system accepts **at-least-once message delivery**, meaning consumers must safely handle duplicate messages.
+
+### 4. Transactional Outbox Pattern
+
+The outbox pattern addresses the database-write and Kafka-publish dual-write problem.
+
+Workflow:
+
+1. Job state and outbox event are committed in the same database transaction.
+2. An independent publisher reads pending outbox events.
+3. Events are published to Kafka.
+4. Successfully published records are marked accordingly.
+5. Consumers deduplicate messages to handle duplicate delivery.
+
+### 5. Idempotent Execution
+
+Each scheduled occurrence receives a deterministic idempotency key:
+
+```text
+jobId:scheduledEpochMillis
+```
+
+The `job_runs.idempotency_key` unique constraint prevents multiple run records for the same scheduled occurrence.
+
+**Important:** Exactly-once business effects require durable downstream idempotency and fencing validation at the actual side-effect destination. Kafka delivery guarantees and Redis leases alone do not provide end-to-end exactly-once execution.
+
+---
+
+## 📐 Complexity & Capacity Model
+
+| Operation | Complexity |
+|---|---|
+| Job creation | O(1) average partition assignment |
+| Database insertion | O(log N) indexed structures |
+| Due-job scanning | O(log N + B) |
+| Run deduplication | O(log R) |
+| Partition ownership state | O(P) |
+| Partition claim | O(1) per partition |
+| Storage | O(J + R + O) |
+
+Where:
+
+- `J` = Total scheduled jobs
+- `R` = Retained execution records
+- `O` = Outbox events
+- `P` = Number of scheduling partitions
+- `B` = Batch size
+
+### Target Capacity
+
+The case-study target:
+
+- 100,000 scheduled jobs
+- Execution within a 10-minute window
+- Three-node cluster
+
+This represents an average of approximately **166.7 jobs per second**.
+
+The target p99 scheduling lag is less than 2 seconds. This is a performance objective, not a verified benchmark result.
+
+---
+
+## 🔐 Reliability & Failure Handling
+
+The architecture considers the following distributed-system failure scenarios:
+
+- Application node crashes during execution.
+- Duplicate Kafka event delivery.
+- Outbox publisher crashes after Kafka acknowledgement.
+- Stale scheduler attempts execution after losing its lease.
+- Multiple nodes compete for partition ownership.
+- Database and Kafka experience temporary unavailability.
+- Cron schedules encounter daylight-saving transitions.
+
+The design uses durable state, idempotency, leases, fencing, and recovery mechanisms to address these scenarios.
+
+---
+
+## 📅 Scheduling & Timezone Policy
+
+The scheduler uses tenant-specific `ZoneId` rather than the server's default timezone.
+
+DST handling policy:
+
+- **Spring-forward gap:** Skip nonexistent local times and move to the next matching cron occurrence.
+- **Fall-back overlap:** Execute one occurrence per local scheduled date, choosing the earlier offset.
+- **Persistence:** Store the resolved `Instant` to avoid recalculating a different occurrence after restarts.
+
+Explicit DST tests are required before enabling cron workloads across DST regions.
+
+---
+
+## ▶️ Getting Started
+
+### Prerequisites
+
+- Java 21
+- Maven 3.9+
+- Docker
+- Docker Compose
+- Node.js (for the frontend)
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/aviralnull/Trip-Job-Scheduler.git
+cd Trip-Job-Scheduler
+```
+
+### 2. Start Infrastructure
 
 ```bash
 docker compose up -d
+```
+
+This starts:
+
+- PostgreSQL
+- Redis
+- Kafka
+- Prometheus
+
+### 3. Run the Spring Boot Application
+
+```bash
 mvn spring-boot:run
 ```
 
-Health: `http://localhost:8080/actuator/health`  
-Prometheus: `http://localhost:8080/actuator/prometheus`  
-Prometheus UI: `http://localhost:9090`
+### 4. Run the Frontend
 
-The compose file starts PostgreSQL, Redis, Kafka and Prometheus. Run the Spring Boot application locally in a separate terminal. For a containerized app, build with `docker build -t trip-scheduler .` and add an app service to Compose after infrastructure is healthy.
-
-## API examples
-
-The current development security uses HTTP Basic. The default local username/password are Spring Security generated unless you configure users; configure a proper user store/JWT before using the API.
-
-Create one-off job:
 ```bash
-curl -u demo:password -X POST http://localhost:8080/api/v1/jobs \
- -H 'Content-Type: application/json' \
- -d '{"name":"pickup-alert","type":"ONE_OFF","payload":"{\"tripId\":\"trip-123\"}","zoneId":"Asia/Kolkata","fireAt":"2026-10-31T08:00:00Z","priority":10,"maxRuntimeSeconds":30,"misfirePolicy":"FIRE_NOW"}'
+cd frontend
+npm install
+npm run dev
 ```
 
-Create recurring job:
+### 5. Verify Application Health
+
+```text
+http://localhost:8080/actuator/health
+```
+
+### 6. Access Monitoring
+
+| Service | URL |
+|---|---|
+| Application Health | http://localhost:8080/actuator/health |
+| Prometheus Metrics | http://localhost:8080/actuator/prometheus |
+| Prometheus UI | http://localhost:9090 |
+
+---
+
+## 🔌 API Examples
+
+### Create a One-Time Job
+
+```bash
+curl -u demo:password \
+  -X POST http://localhost:8080/api/v1/jobs \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "pickup-alert",
+    "type": "ONE_OFF",
+    "payload": "{\"tripId\":\"trip-123\"}",
+    "zoneId": "Asia/Kolkata",
+    "fireAt": "2026-10-31T08:00:00Z",
+    "priority": 10,
+    "maxRuntimeSeconds": 30,
+    "misfirePolicy": "FIRE_NOW"
+  }'
+```
+
+### Create a Recurring Job
+
 ```json
 {
   "name": "daily-roster",
@@ -65,41 +291,89 @@ Create recurring job:
 }
 ```
 
-## DST policy to document and enforce
+> **Development security:** The current HTTP Basic configuration is a development placeholder. Configure a proper user store or JWT authentication before using the API. The example credentials are illustrative and must be configured locally.
 
-Use tenant `ZoneId`, never the server default zone. A nonexistent local time during a spring-forward gap (e.g. 02:30) is skipped to the next matching cron occurrence. For an overlap (e.g. 01:30 occurs twice), define a single occurrence per local scheduled date and choose the earlier offset; persist the resolved `Instant` so restarts do not recalculate a different occurrence. Add explicit tests before enabling cron workloads across DST regions.
+---
 
-## Complexity and capacity model
-
-* Job creation: O(1) average hash partition assignment; database insert O(log N) for indexed structures.
-* Due scan: O(log N + B) with a suitable ordered due index, where B is the batch size. This starter's query uses an indexed timestamp/status range.
-* Run deduplication: O(log R) unique-index lookup/insert.
-* Partition ownership: O(P) total ownership state for P partitions; steady-state claim is O(1) per partition.
-* Space: O(J + R + O) for jobs, retained runs and outbox events. Apply retention/archival to completed runs and published outbox records.
-
-A 100k/10m target averages 166.7 due jobs/s, but burst shape matters. Three nodes need measured headroom for retries, DB commit latency, Kafka lag and tenant caps. Benchmark p50/p99 on the actual deployment; no benchmark result is fabricated in this repository.
-
-## Package structure
+## 📁 Project Structure
 
 ```text
-src/main/java/com/moveinsync/scheduler/
-  api/                 REST controllers and global exception mapping
-  api/dto/              request/response contracts
-  config/               Spring, Redis, Kafka and security configuration
-  domain/               JPA entities and state enums
-  repository/           persistence interfaces
-  service/              partitioning, dispatch, leases, cron, outbox and workers
-src/main/resources/
-  db/migration/         Flyway schema
-  redis/                Redis Lua scripts
-src/test/java/          unit and integration tests
-monitoring/              Prometheus scrape configuration
+Trip-Job-Scheduler/
+│
+├── docs/
+│   ├── DESIGN.md
+│   ├── LOAD_AND_FAILURE_TEST_PLAN.md
+│   ├── Distributed Trip Scheduler Demo.png
+│   ├── high_level.jpeg
+│   └── low_level_job_scheduler.jpeg
+│
+├── frontend/
+│
+├── src/main/java/com/moveinsync/scheduler/
+│   ├── api/
+│   ├── config/
+│   ├── domain/
+│   ├── repository/
+│   └── service/
+│
+├── src/main/resources/
+│   ├── db/migration/
+│   └── redis/
+│
+├── src/test/java/
+│
+├── monitoring/
+├── docker-compose.yml
+└── README.md
 ```
 
-## Trade-offs
+---
 
-* PostgreSQL gives durable state and transactional uniqueness; Redis and Kafka are coordination/transport layers, not the only copy of job state.
-* The outbox favors consistency over the lowest possible dispatch latency.
-* At-least-once Kafka delivery is accepted; effects are deduplicated at the destination.
-* A fixed partition count (256) simplifies scheduling but rebalancing needs an explicit ownership protocol.
-* Single-broker Compose is for development only, not production availability.
+## 🚧 Implementation Status & Future Improvements
+
+This repository provides a runnable foundation for the distributed scheduling architecture. The following advanced-track requirements still need completion and verification:
+
+- [ ] Production-ready JWT authentication and tenant identity propagation.
+- [ ] Atomic lease acquisition and renewal with owner identity and monotonically increasing fencing tokens.
+- [ ] Fencing validation at the side-effect destination.
+- [ ] Durable downstream idempotency.
+- [ ] Per-tenant concurrency limits and fair dispatch.
+- [ ] Exponential retry backoff with jitter.
+- [ ] Dead-letter replay and manual job triggering.
+- [ ] Next-fire preview and complete misfire handling.
+- [ ] Multi-node partition rebalancing.
+- [ ] Distributed clock monitoring and UTC-based due-time authority.
+- [ ] Comprehensive Prometheus metrics.
+- [ ] Load and failure testing for the 100k jobs / 10-minute target.
+- [ ] Three-node failover, duplicate delivery, `kill -9`, and `SIGSTOP` testing.
+
+Production-grade guarantees and the p99 target must not be claimed until the relevant implementation and tests are complete.
+
+See **[LOAD_AND_FAILURE_TEST_PLAN.md](./docs/LOAD_AND_FAILURE_TEST_PLAN.md)** for planned validation scenarios.
+
+---
+
+## ⚖️ Engineering Trade-offs
+
+| Decision | Trade-off |
+|---|---|
+| PostgreSQL as source of truth | Durable consistency over purely in-memory scheduling. |
+| Redis for coordination | Fast ownership coordination, but requires correct fencing and lease protocols. |
+| Kafka at-least-once delivery | Reliability with consumer-side deduplication. |
+| Transactional Outbox | Consistent event publishing with additional dispatch latency. |
+| Fixed 256 partitions | Simpler partitioning, but requires explicit rebalancing. |
+| Single-broker Kafka in Compose | Convenient local development, not production availability. |
+
+---
+
+## 🎯 Project Objective
+
+The objective is to design and implement a reliable distributed scheduling system that can coordinate multiple scheduler instances, isolate tenants, recover from failures, and execute scheduled jobs without producing duplicate business effects.
+
+**Built with Java 21, Spring Boot, PostgreSQL, Redis, and Kafka.**
+
+---
+
+<p align="center">
+  <b>⭐ If you find this project interesting, consider giving the repository a star!</b>
+</p>
