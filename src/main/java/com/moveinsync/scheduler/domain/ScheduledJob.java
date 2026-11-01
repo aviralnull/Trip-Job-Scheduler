@@ -44,4 +44,26 @@ public class ScheduledJob {
  public void setNextFireAt(Instant value){this.nextFireAt=value;}
  public void setStatus(JobStatus value){this.status=value;}
  public Instant getCreatedAt(){return createdAt;}
+
+ public void updateDetails(
+    String name,
+    JobType type,
+    String cronExpression,
+    String payload,
+    ZoneId zoneId,
+    Instant nextFireAt,
+    int priority,
+    int maxRuntimeSeconds,
+    MisfirePolicy misfirePolicy
+) {
+    this.name = name;
+    this.type = type;
+    this.cronExpression = cronExpression;
+    this.payload = payload;
+    this.zoneId = zoneId.getId();
+    this.nextFireAt = nextFireAt;
+    this.priority = priority;
+    this.maxRuntimeSeconds = maxRuntimeSeconds;
+    this.misfirePolicy = misfirePolicy;
+}
 }

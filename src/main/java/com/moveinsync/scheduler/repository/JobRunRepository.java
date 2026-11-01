@@ -4,9 +4,7 @@ import com.moveinsync.scheduler.domain.JobRun;
 import com.moveinsync.scheduler.domain.RunStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 public interface JobRunRepository extends JpaRepository<JobRun, UUID> {
 
@@ -15,6 +13,11 @@ public interface JobRunRepository extends JpaRepository<JobRun, UUID> {
     long countByStatus(RunStatus status);
 
     List<JobRun> findTop100ByTenantIdOrderByCreatedAtDesc(String tenantId);
+
+    List<JobRun> findTop200ByJobIdAndTenantIdOrderByCreatedAtDesc(
+        UUID jobId,
+        String tenantId
+    );
 
     long countByTenantIdAndStatus(String tenantId, RunStatus status);
 }

@@ -97,12 +97,4 @@ private String email;
 public String getEmail() {
     return email;
 }
-
-public void setRole(String role) {
-    this.role = role;
-}
-
-public void setEnabled(boolean enabled) {
-    this.enabled = enabled;
-}
 }

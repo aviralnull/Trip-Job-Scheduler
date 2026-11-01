@@ -5,7 +5,7 @@ import com.moveinsync.scheduler.api.dto.AuthResponse;
 import com.moveinsync.scheduler.api.dto.RegisterRequest;
 import com.moveinsync.scheduler.domain.User;
 import com.moveinsync.scheduler.repository.UserRepository;
-import org.springframework.dao.DataIntegrityViolationException;
+// import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
