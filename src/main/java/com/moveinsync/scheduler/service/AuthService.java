@@ -53,7 +53,7 @@ public AuthResponse register(RegisterRequest request) {
         email,
         username,
         passwordEncoder.encode(request.password()),
-        "EMPLOYEE",
+        "ADMIN",
         tenantId
     );
 
@@ -62,7 +62,7 @@ public AuthResponse register(RegisterRequest request) {
     return new AuthResponse(
         "Registration successful.",
         username,
-        "EMPLOYEE"
+        "ADMIN"
     );
 }
 }
